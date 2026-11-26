@@ -35,7 +35,10 @@ function assertPackagedWebClient(resourcesDir) {
     !files.every(
       (file) =>
         typeof file === 'string' &&
-        (file === WEB_CLIENT_INDEX || /^(?:assets|cmaps|standard_fonts|wasm)\//.test(file)) &&
+        (file === WEB_CLIENT_INDEX ||
+          file === 'robots.txt' ||
+          file === 'sitemap.xml' ||
+          /^(?:assets|cmaps|standard_fonts|wasm)\//.test(file)) &&
         !file.includes('\\') &&
         !file.includes('\0') &&
         file.split('/').every((part) => part !== '' && part !== '.' && part !== '..') &&

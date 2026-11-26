@@ -169,6 +169,12 @@ assertEntryIsolation()
 visitManifestEntry('web-index.html')
 includeReferencedOutputs()
 includePdfjsViewerAssets()
+// Deployment customization: crawler protocol files live at the public root, not in the vite manifest.
+for (const crawlerFile of ['robots.txt', 'sitemap.xml']) {
+  if (existsSync(join(rendererOutput, crawlerFile))) {
+    addOutputPath(crawlerFile)
+  }
+}
 
 rmSync(stagingOutput, { force: true, recursive: true })
 try {

@@ -4,7 +4,7 @@ import type { IncomingMessage, RequestListener, ServerResponse } from 'node:http
 import { basename, extname, isAbsolute, posix, relative, resolve } from 'node:path'
 import { readBundledWebClientFiles } from '../../../../../shared/web-client/bundled-web-client-manifest'
 
-const STATIC_WEB_ALLOWED_PATHS = new Set(['/web-index.html'])
+const STATIC_WEB_ALLOWED_PATHS = new Set(['/web-index.html', '/robots.txt', '/sitemap.xml'])
 const STATIC_WEB_ALLOWED_PREFIXES = ['/assets/', '/cmaps/', '/standard_fonts/', '/wasm/']
 const STATIC_WEB_CONTENT_TYPES = new Map([
   ['.css', 'text/css; charset=utf-8'],
@@ -13,9 +13,11 @@ const STATIC_WEB_CONTENT_TYPES = new Map([
   ['.json', 'application/json; charset=utf-8'],
   ['.png', 'image/png'],
   ['.svg', 'image/svg+xml; charset=utf-8'],
+  ['.txt', 'text/plain; charset=utf-8'],
   ['.wasm', 'application/wasm'],
   ['.webp', 'image/webp'],
-  ['.woff2', 'font/woff2']
+  ['.woff2', 'font/woff2'],
+  ['.xml', 'application/xml; charset=utf-8']
 ])
 
 /** A server without a web client still answers plain HTTP, so callers fail fast instead of hanging. */

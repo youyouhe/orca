@@ -1,0 +1,51 @@
+# Orca Web (orca.smartbid.site) robots.txt
+# 内容口径(用户拍板 2026-10-16):允许 AI 爬虫检索并引用公开内容;不授权用于训练语料。
+
+User-agent: *
+Allow: /
+
+Sitemap: https://orca.smartbid.site/sitemap.xml
+
+# —— 检索/引用类 AI 爬虫:允许抓取与引用 ——
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+# —— 训练类爬虫:ai-train=no,不授权进入训练语料 ——
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+# 内容信号:允许检索、允许作为 AI 回答输入;不允许用于模型训练
+content-signal: search=yes, ai-input=yes, ai-train=no
