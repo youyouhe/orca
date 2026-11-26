@@ -5,6 +5,8 @@ import { printResult } from '../output/command-result-output'
 import { parseHostFlag } from './execution-host-flag'
 import {
   fetchSshTargetSummaries,
+  formatSshTargetEndpoint,
+  listRegisteredSshTargetsById,
   listSshTargets,
   LOCAL_HOST_LIST_NAME,
   type SshTargetSummary
@@ -75,15 +77,27 @@ export const ENVIRONMENT_HANDLERS: Record<string, CommandHandler> = {
       '`orca host list`. It answers from this machine\u2019s own pairing store, so a routed answer would name servers paired with a different machine.',
       'Run `orca host list` on that machine to see the SSH targets registered there.'
     )
-    const sshTargets = (await listSshTargets(client)).map((target) => ({
-      kind: 'ssh' as const,
-      name: target.label,
-      id: target.id,
-      selector: `--host ssh:${target.id}`,
-      ...(target.connected === undefined ? {} : { connected: target.connected }),
-      ...(target.connectionStatus ? { connectionStatus: target.connectionStatus } : {}),
-      ...(target.remotePlatform ? { platform: target.remotePlatform } : {})
-    }))
+    // Why: endpoints are read from the owner inventory; a host that predates the method keeps
+    // the paired-client summary shape with no endpoint column.
+    const registeredById = await listRegisteredSshTargetsById(client)
+    const sshTargets = (await listSshTargets(client)).map((target) => {
+      const registered = registeredById.get(target.id)
+      return {
+        kind: 'ssh' as const,
+        name: target.label,
+        id: target.id,
+        selector: `--host ssh:${target.id}`,
+        ...(registered
+          ? {
+              endpoint: formatSshTargetEndpoint(registered),
+              source: registered.source ?? ('manual' as const)
+            }
+          : {}),
+        ...(target.connected === undefined ? {} : { connected: target.connected }),
+        ...(target.connectionStatus ? { connectionStatus: target.connectionStatus } : {}),
+        ...(target.remotePlatform ? { platform: target.remotePlatform } : {})
+      }
+    })
     // Read the local pairing store without dialing every server, so listing works offline.
     const localStatus = await readLocalHostDescriptor(client)
     const environments = (await listEnvironments(getDefaultUserDataPath())).map((environment) => ({
