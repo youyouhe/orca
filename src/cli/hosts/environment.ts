@@ -120,6 +120,31 @@ export const ENVIRONMENT_HANDLERS: Record<string, CommandHandler> = {
     ]
     printResult(localSuccess({ hosts }), json, formatHostList)
   },
+  // LOCAL FORK (railans): reconnect/verify an SSH target. Upstream dropped `host test`
+  // while worktree/terminal creation on SSH hosts needs a live relay, which only the UI
+  // could start. Calls the same ssh.connect RPC the UI uses.
+  'host test': async ({ client, flags, json }) => {
+    rejectLocalPairingStoreRetargeting(
+      flags,
+      '`orca host test`. It connects an SSH target on this machine\u2019s own Orca runtime.',
+      'Run `orca host test` on that machine instead.'
+    )
+    const targetId = requireSshHostFlag(flags)
+    const response = await client.call('ssh.connect', { targetId })
+    const state = (
+      response.result as { state?: { status?: string; remotePlatform?: string } } | undefined
+    )?.state
+    const result = { targetId, state }
+    printResult(
+      { ...response, result },
+      json,
+      (value: typeof result) =>
+        `SSH target ${value.targetId}: ${value.state?.status ?? 'unknown'}${
+          value.state?.remotePlatform ? ` (${value.state.remotePlatform})` : ''
+        }`
+    )
+  },
+
   'host rm': async ({ client, flags, json }) => {
     rejectLocalPairingStoreRetargeting(
       flags,

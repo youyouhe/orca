@@ -64,6 +64,17 @@ export const ENVIRONMENT_COMMAND_SPECS: CommandSpec[] = [
     examples: ['orca host list', 'orca host list --json']
   },
   {
+    path: ['host', 'test'],
+    summary: 'Connect an SSH target (starts its relay) and report the connection state',
+    usage: 'orca host test --host ssh:<target-id> [--json]',
+    allowedFlags: [...LOCAL_COMMAND_FLAGS, 'host'],
+    notes: [
+      'Local fork (railans): worktree and terminal creation on an SSH host need the relay attached; this command connects it without the UI.',
+      'Takes the --host ssh:<target-id> form that `orca host list` prints.'
+    ],
+    examples: ['orca host test --host ssh:ssh-1783599077486-fyasux']
+  },
+  {
     path: ['host', 'rm'],
     destructive: true,
     summary: 'Remove one saved SSH target from this Orca host',
