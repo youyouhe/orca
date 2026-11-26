@@ -124,3 +124,52 @@ describe('server SSH target management RPC', () => {
     expect(listedTargetKeys(response).filter((key) => !ALLOWED_VIEW_KEYS.has(key))).toEqual([])
   })
 })
+
+describe('ssh.addTarget duplicate endpoint guard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.getRegisteredSshState.mockReturnValue({ status: 'connected' })
+  })
+
+  it('refuses a duplicate endpoint and names the host and port', async () => {
+    // Why this shape: the rule is the host+port+username triple (see the shared module's
+    // fork note), so a blank username cannot dodge an explicit one on the same endpoint.
+    mocks.listRegisteredSshTargets.mockReturnValue([
+      { host: '127.0.0.1', port: 22133, username: 'dev' }
+    ])
+
+    const response = await dispatch('ssh.addTarget', {
+      target: { label: 'Other', host: '127.0.0.1', port: 22133, username: '' }
+    })
+
+    expect(response).toMatchObject({
+      ok: false,
+      error: {
+        code: 'invalid_argument',
+        message: 'That SSH host is already in Orca (127.0.0.1:22133).'
+      }
+    })
+    expect(mocks.mutations.add).not.toHaveBeenCalled()
+  })
+
+  it('registers a different endpoint even when the label matches an existing target', async () => {
+    // Fork guard: labels are display-only, so a new endpoint must still register.
+    mocks.listRegisteredSshTargets.mockReturnValue([
+      { label: 'prod', host: '10.0.0.1', port: 22, username: 'dev' }
+    ])
+    mocks.mutations.add.mockReturnValue({
+      target: { ...storedTarget, label: 'prod', host: '10.0.0.2' },
+      repoReadoptions: []
+    })
+
+    const response = await dispatch('ssh.addTarget', {
+      target: { label: 'prod', host: '10.0.0.2', port: 22, username: 'dev' }
+    })
+
+    expect(response).toMatchObject({
+      ok: true,
+      result: { target: { label: 'prod', host: '10.0.0.2' } }
+    })
+    expect(mocks.mutations.add).toHaveBeenCalledTimes(1)
+  })
+})

@@ -18,7 +18,7 @@ import {
   type SshTargetCreateInput
 } from '../../../../../../shared/remote-runtime/ssh/ssh-types'
 
-import { isDuplicateSshTargetAlias } from './ssh-target-duplicate'
+import { isDuplicateSshTargetEndpoint } from '../../../../../../shared/remote-runtime/ssh/ssh-target-duplicate'
 
 type SshApi = {
   listTargets: () => Promise<SshTarget[]>
@@ -31,7 +31,7 @@ type SshApi = {
   }>
 }
 
-type SavedSshHost = Pick<SshTarget, 'configHost' | 'label' | 'host'>
+type SavedSshHost = Pick<SshTarget, 'host' | 'port' | 'username'>
 
 /** `ssh` is this client's own API or a paired server's (whose hosts never touch local metadata). */
 export async function saveNewSshHostFromForm<T extends SavedSshHost>({
@@ -95,11 +95,11 @@ export async function saveNewSshHostFromForm<T extends SavedSshHost>({
   try {
     const existingTargets = await ssh.listTargets()
     if (
-      isDuplicateSshTargetAlias({
+      isDuplicateSshTargetEndpoint({
         existingTargets,
-        configHost: target.configHost,
-        label: target.label,
-        host: target.host
+        host: target.host,
+        port: target.port,
+        username: target.username
       })
     ) {
       toast.error(

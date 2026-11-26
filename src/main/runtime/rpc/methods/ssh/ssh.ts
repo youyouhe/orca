@@ -9,7 +9,8 @@ import {
 } from '../../../../ssh/targets/ssh-target-registry'
 import { isManagedOrcadSshTarget } from '../../../../ssh/targets/ssh-target-runtime-ownership'
 import { browseSshDirectory } from '../../../../ssh/filesystem/ssh-remote-directory-browse'
-import { defineMethod } from '../../core'
+import { defineMethod, InvalidArgumentError } from '../../core'
+import { isDuplicateSshTargetEndpoint } from '../../../../../shared/remote-runtime/ssh/ssh-target-duplicate'
 import {
   getPublicSshError,
   getPublicSshState
@@ -148,6 +149,22 @@ export const SSH_METHODS = [
     permission: 'workspace',
     params: SshTargetAdd,
     handler: (params) => {
+      const { target } = params
+      // Why: the endpoint-triple rule the add dialog applies (host+port+username; see the
+      // shared module's fork note), enforced here so a CLI registration cannot bypass the
+      // renderer's own pre-check.
+      if (
+        isDuplicateSshTargetEndpoint({
+          existingTargets: listRegisteredSshTargets(),
+          host: target.host,
+          port: target.port,
+          username: target.username
+        })
+      ) {
+        throw new InvalidArgumentError(
+          `That SSH host is already in Orca (${target.host}:${target.port}).`
+        )
+      }
       const result = getRegisteredSshTargetMutations().add({
         ...withExplicitRemoteCliControl(params.target),
         source: 'manual'
