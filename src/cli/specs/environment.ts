@@ -75,6 +75,31 @@ export const ENVIRONMENT_COMMAND_SPECS: CommandSpec[] = [
     examples: ['orca host test --host ssh:ssh-1783599077486-fyasux']
   },
   {
+    path: ['host', 'stop'],
+    destructive: true,
+    summary: 'Stop the Orca server on an SSH host (same as Stop… in Settings)',
+    usage: 'orca host stop --environment <server> [--json]',
+    allowedFlags: [...LOCAL_COMMAND_FLAGS, 'environment'],
+    notes: [
+      'Stops the managed orcad server on that host, proving the exit before the host record is released.',
+      'Takes the server selector `orca environment list` prints (id or name), not `ssh:<id>`.',
+      'Use `host forget` instead when the host is already gone.'
+    ],
+    examples: ['orca host stop --environment build-box']
+  },
+  {
+    path: ['host', 'forget'],
+    destructive: true,
+    summary: 'Forget a managed server whose host is gone (same as Forget… in Settings)',
+    usage: 'orca host forget --environment <server> [--json]',
+    allowedFlags: [...LOCAL_COMMAND_FLAGS, 'environment'],
+    notes: [
+      'Does not contact the host: it drops the local registration and reports the outcome as unverifiable.',
+      'Use `host stop` when the host still answers; forgetting cannot prove the server stopped.'
+    ],
+    examples: ['orca host forget --environment build-box']
+  },
+  {
     path: ['host', 'rm'],
     destructive: true,
     summary: 'Remove one saved SSH target from this Orca host',

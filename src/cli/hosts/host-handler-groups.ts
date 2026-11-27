@@ -10,6 +10,8 @@ export const HOST_HANDLER_GROUPS: readonly HandlerGroup[] = [
       'host name',
       'host list',
       'host rm',
+      'host stop',
+      'host forget',
       'host test',
       'environment add',
       'environment list',

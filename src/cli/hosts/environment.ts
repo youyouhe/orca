@@ -145,6 +145,27 @@ export const ENVIRONMENT_HANDLERS: Record<string, CommandHandler> = {
     )
   },
 
+  // Managed-server lifecycle: Settings' Stop…/Forget… without the desktop UI.
+  'host stop': async ({ client, flags, json }) => {
+    const selector = requireManagementSelector(flags, '`orca host stop`')
+    const response = await client.call('managedServer.stop', { selector })
+    printResult(
+      { ...response, result: { selector, outcome: response.result } },
+      json,
+      () => `Stopped the Orca server on ${selector}.`
+    )
+  },
+  'host forget': async ({ client, flags, json }) => {
+    const selector = requireManagementSelector(flags, '`orca host forget`')
+    // forgetLocal works headless; the desktop-only managedServer.forget refuses there.
+    const response = await client.call('managedServer.forgetLocal', { selector })
+    printResult(
+      { ...response, result: { selector, outcome: response.result } },
+      json,
+      () => `Forgot the Orca server registration ${selector} (host not contacted).`
+    )
+  },
+
   'host rm': async ({ client, flags, json }) => {
     rejectLocalPairingStoreRetargeting(
       flags,
@@ -234,6 +255,22 @@ function rejectLocalPairingStoreRetargeting(
   rejectRemoteSelectionFlags(flags, suffix, {
     nextSteps: [crossHostNextStep, 'Drop the flag to answer for this machine.']
   })
+}
+
+/** Managed-server lifecycle takes the server selector env-list prints, not `--host ssh:<id>`. */
+function requireManagementSelector(
+  flags: Map<string, string | boolean>,
+  what: string
+): string {
+  const selector = flags.get('environment')
+  if (typeof selector === 'string' && selector.trim().length > 0) {
+    return selector.trim()
+  }
+  throw new RuntimeClientError(
+    'invalid_argument',
+    `${what} needs --environment <server>: the selector \`orca environment list\` prints.`,
+    { nextSteps: ['Run `orca environment list` and pass its id or name.'] }
+  )
 }
 
 function requireSshHostFlag(flags: Map<string, string | boolean>): string {
