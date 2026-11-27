@@ -8,6 +8,13 @@ export type SshTargetSummary = {
   connected?: boolean
   connectionStatus?: string
 }
+/** Owner-registered endpoint fields the summary RPC deliberately withholds from paired clients. */
+export type SshTargetRegistration = SshTargetSummary & {
+  host: string
+  port: number
+  username: string
+  source?: 'ssh-config' | 'manual'
+}
 export type EnvironmentSummary = { id: string; name: string }
 
 export const LOCAL_HOST_LIST_NAME = 'this machine'
@@ -119,6 +126,31 @@ async function readSshTargetSummaries(client: RuntimeClient) {
 export async function listSshTargets(client: RuntimeClient): Promise<SshTargetSummary[]> {
   const { targets, legacy } = await readSshTargetSummaries(client)
   return legacy ? await enrichLegacySshTargetStates(client, targets) : targets
+}
+
+// Why: only this machine's owner may see endpoints. Best-effort like `listSshTargets`: an older
+// host without the method or a down runtime degrades to an empty map so the summary rows and
+// the local row still print.
+export async function listRegisteredSshTargetsById(
+  client: RuntimeClient
+): Promise<Map<string, SshTargetRegistration>> {
+  try {
+    const result = await client.call<{ targets: SshTargetRegistration[] }>(
+      'ssh.listEditableTargets'
+    )
+    return new Map(result.result.targets.map((target) => [target.id, target]))
+  } catch {
+    return new Map()
+  }
+}
+
+/** `user@host:port`, the endpoint form `host list` prints for a registered SSH target. */
+export function formatSshTargetEndpoint(target: {
+  host: string
+  port: number
+  username: string
+}): string {
+  return `${target.username ? `${target.username}@` : ''}${target.host}:${target.port}`
 }
 
 async function enrichLegacySshTargetStates(

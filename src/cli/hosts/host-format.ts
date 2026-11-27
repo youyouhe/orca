@@ -7,6 +7,10 @@ export type HostListEntry = {
   machineName?: string
   connected?: boolean
   connectionStatus?: string
+  /** Owner-registered `user@host:port`; absent on hosts predating the inventory method. */
+  endpoint?: string
+  /** Where the target came from (`manual` or `ssh-config`); only shown for ssh-config rows. */
+  source?: 'manual' | 'ssh-config'
 }
 
 // Explicit host selectors prevent callers from using a display name on the wrong host scope.
@@ -17,10 +21,12 @@ export function formatHostList(result: { hosts: HostListEntry[] }): string {
     environment: 'orca server'
   }
   return result.hosts
-    .map(
-      (host) =>
-        `${kindLabel[host.kind].padEnd(11)} ${host.name}${host.machineName ? ` (${host.machineName})` : ''}  ${host.platform ?? 'platform unknown'}  ${formatHostConnection(host)}  ->  ${host.selector}`
-    )
+    .map((host) => {
+      const endpointSuffix = host.endpoint
+        ? ` (${host.endpoint}${host.source === 'ssh-config' ? ', from ~/.ssh/config' : ''})`
+        : ''
+      return `${kindLabel[host.kind].padEnd(11)} ${host.name}${host.machineName ? ` (${host.machineName})` : ''}${endpointSuffix}  ${host.platform ?? 'platform unknown'}  ${formatHostConnection(host)}  ->  ${host.selector}`
+    })
     .join('\n')
 }
 

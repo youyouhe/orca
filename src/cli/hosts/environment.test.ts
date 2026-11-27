@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HandlerContext } from '../dispatch/dispatch'
 import { RuntimeClientError, RuntimeRpcFailureError } from '../runtime/connection/types'
 import { ENVIRONMENT_HANDLERS } from './environment'
+import { formatHostList, type HostListEntry } from './host-format'
 
 const printResultMock = vi.hoisted(() => vi.fn())
 const listEnvironmentsMock = vi.hoisted(() => vi.fn(async () => []))
@@ -243,5 +244,113 @@ describe('orca host add handler', () => {
     expect(lastCall?.[2](lastCall?.[0].result)).toContain(
       'Re-pointed 2 workspace(s) from ssh-old to ssh-new.'
     )
+  })
+})
+
+describe('orca host list endpoint column', () => {
+  const summaries = [
+    { id: 'ssh-1', label: 'box-one', connected: true, connectionStatus: 'connected' },
+    { id: 'ssh-2', label: 'box-two', remotePlatform: 'linux' as const }
+  ]
+
+  function listClient(editable: unknown) {
+    return fakeClient(
+      vi.fn(async (method: string) => {
+        if (method === 'ssh.listEditableTargets') {
+          return editable
+        }
+        if (method === 'ssh.listTargetSummaries') {
+          return ok({ targets: summaries })
+        }
+        if (method === 'status.get') {
+          return ok({ machineName: 'dev-box', hostPlatform: 'linux' })
+        }
+        throw new Error(`unexpected call ${method}`)
+      })
+    )
+  }
+
+  it('adds the owner endpoint and source to each SSH row', async () => {
+    const client = listClient(
+      ok({
+        targets: [
+          {
+            id: 'ssh-1',
+            label: 'box-one',
+            host: '10.0.0.1',
+            port: 2222,
+            username: 'dev',
+            source: 'manual'
+          },
+          { id: 'ssh-2', label: 'box-two', host: 'box.example.org', port: 22, username: '' }
+        ]
+      })
+    )
+
+    await ENVIRONMENT_HANDLERS['host list'](handlerContext([], client))
+
+    const hosts = printResultMock.mock.calls.at(-1)?.[0].result.hosts as HostListEntry[]
+    expect(hosts.find((host) => host.id === 'ssh-1')).toMatchObject({
+      endpoint: 'dev@10.0.0.1:2222',
+      source: 'manual',
+      connected: true
+    })
+    expect(hosts.find((host) => host.id === 'ssh-2')).toMatchObject({
+      endpoint: 'box.example.org:22',
+      source: 'manual',
+      platform: 'linux'
+    })
+  })
+
+  it('keeps the summary shape when the runtime predates the inventory method', async () => {
+    const client = fakeClient(
+      vi.fn(async (method: string) => {
+        if (method === 'ssh.listEditableTargets') {
+          throw methodNotFound(method)
+        }
+        if (method === 'ssh.listTargetSummaries') {
+          return ok({ targets: summaries })
+        }
+        if (method === 'status.get') {
+          return ok({ machineName: 'dev-box', hostPlatform: 'linux' })
+        }
+        throw new Error(`unexpected call ${method}`)
+      })
+    )
+
+    await ENVIRONMENT_HANDLERS['host list'](handlerContext([], client))
+
+    const hosts = printResultMock.mock.calls.at(-1)?.[0].result.hosts as HostListEntry[]
+    for (const host of hosts.filter((entry) => entry.kind === 'ssh')) {
+      expect(host.endpoint).toBeUndefined()
+      expect(host.source).toBeUndefined()
+    }
+  })
+})
+
+describe('formatHostList endpoint rendering', () => {
+  it('prints the endpoint and flags a target synced from ~/.ssh/config', () => {
+    const hosts: HostListEntry[] = [
+      {
+        kind: 'ssh',
+        name: 'box',
+        id: 'ssh-1',
+        selector: '--host ssh:ssh-1',
+        endpoint: 'dev@box:2222',
+        source: 'ssh-config'
+      },
+      {
+        kind: 'ssh',
+        name: 'plain',
+        id: 'ssh-2',
+        selector: '--host ssh:ssh-2',
+        endpoint: 'plain:22'
+      }
+    ]
+
+    const text = formatHostList({ hosts })
+
+    expect(text).toContain('box (dev@box:2222, from ~/.ssh/config)')
+    expect(text).toContain('plain (plain:22)')
   })
 })
