@@ -5,6 +5,8 @@ import { resolveEnvironment } from '../../../../shared/remote-runtime/host-store
 import { removeManagedOrcadEnvironment } from '../../../../shared/remote-runtime/host-store/runtime-environment-managed-orcad-store'
 import { getOrcadSshDeployment } from '../../../../shared/remote-runtime/host-catalog/runtime-environments'
 import { getSshTargetRegistryStore } from '../../../ssh/targets/ssh-target-registry'
+import { isRuntimeOwnedSshTarget } from '../../../ssh/targets/ssh-target-runtime-ownership'
+import { requireManagedOrcadInfrastructure } from '../../../managed-server/lifecycle/orcad-managed-runtime-context'
 
 /**
  * LOCAL FORK (railans): headless `serve` publishes no managed-server actions
@@ -37,7 +39,18 @@ export const MANAGED_SERVER_LOCAL_METHODS = [
         )
       }
       await removeManagedOrcadEnvironment(userDataPath, environment.id)
-      getSshTargetRegistryStore()?.removeTarget(deployment.sshTargetId)
+      // Only a target Orca created goes away with the registration. A user-created target that
+      // was merely fenced by this environment must keep its place in the registry: release the
+      // claim the way the desktop forget does instead of deleting it.
+      const store = getSshTargetRegistryStore()
+      const target = store?.getTarget(deployment.sshTargetId)
+      if (store && target && isRuntimeOwnedSshTarget(target)) {
+        store.removeTarget(deployment.sshTargetId)
+      } else if (target) {
+        const { claims } = requireManagedOrcadInfrastructure()
+        claims.releaseForUserRemoval(deployment.sshTargetId, environment.id)
+        await claims.flush()
+      }
       return {
         result: {
           outcome: 'forgotten',
